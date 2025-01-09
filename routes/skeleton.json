@@ -642,7 +642,7 @@
                           "children": [
                             {
                               "element": "p",
-                              "text": "cwrapArray[cwrapArray[1 book/month,2 books/month,Team access],cwrapArray[Online forums,Virtual meetups,Private sessions]]",
+                              "text": "cwrapArray[cwrapArray[1 book/month cwrapBreak 2 books/month cwrapBreak Team access] cwrapBreak cwrapArray[Online forums cwrapBreak Virtual meetups cwrapBreak Private sessions]]",
                               "style": "padding: 0 0 0 42px;margin: 0;display: list-item;background-image: url(\"static/images/icon-check.svg\");background-repeat: no-repeat;background-position: center left; font-family: Inter; color: #385159; font-size: 20px; letter-spacing: -0.5px; line-height: 140%"
                             }
                           ]
