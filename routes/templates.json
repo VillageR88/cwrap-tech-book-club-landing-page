@@ -38,7 +38,7 @@
         "children": [
           {
             "element": "cwrap-template",
-            "text": "cwrapTemplate[ulStars(starWidth=cwrapPassProperty)]",
+            "text": "cwrapTemplate[ulStars]",
             "templateName": true
           },
           {

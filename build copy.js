@@ -97,6 +97,9 @@ function createElementFromJson(
   properties = new Map(), // Ensure properties is always initialized as a Map if not provided
   omit = []
 ) {
+  if (jsonObj?.text?.includes("cwrapOmit")) {
+    return;
+  }
   // Deep copy jsonObj to ensure immutability
   const jsonObjCopy = JSON.parse(JSON.stringify(jsonObj));
   if (omit.includes(jsonObjCopy["omit-id"])) {
@@ -114,7 +117,9 @@ function createElementFromJson(
         properties,
         omit
       );
-      if (childElement) fragment.appendChild(childElement);
+      if (childElement) {
+        fragment.appendChild(childElement);
+      }
     }
     return fragment;
   }
@@ -343,7 +348,7 @@ function createElementFromJson(
       if (element.isPlaceholderCarrier && spanElements[spanIndex]) {
         spanElements[spanIndex].replaceWith(childElement);
         spanIndex++;
-      } else if (!childElement.isOmitted) {
+      } else {
         if (childElement) element.appendChild(childElement);
       }
     }
@@ -904,61 +909,62 @@ function replacePlaceholdersCwrapIndex(jsonObj, index) {
 function replacePlaceholdersCwrapArray(jsonObj, index) {
   const jsonString = JSON.stringify(jsonObj);
 
-  // Function to match the outermost `cwrapArray[...]` while handling nested brackets
-  const findCwrapArrayMatches = (str, cwrapMatch) => {
-    const matches = [];
-    let bracketCount = 0;
-    let startIndex = -1;
+  // Recursive function to parse nested `cwrapArray`
+  const parseCwrapArray = (str) => {
+    const result = [];
+    let i = 0;
 
-    for (let i = 0; i < str.length; i++) {
-      if (str.slice(i, i + 10) === cwrapMatch) {
-        if (startIndex === -1) {
-          startIndex = i;
+    while (i < str.length) {
+      if (str.slice(i, i + 10) === "cwrapArray") {
+        // Start of a new cwrapArray
+        i += 10; // Skip "cwrapArray"
+        if (str[i] === "[") i++; // Skip the opening bracket
+        const innerArray = [];
+        let nested = "";
+        let bracketCount = 1; // Track brackets for nested arrays
+
+        while (bracketCount > 0 && i < str.length) {
+          if (str[i] === "[") {
+            bracketCount++;
+          } else if (str[i] === "]") {
+            bracketCount--;
+          }
+          nested += str[i];
+          i++;
         }
-      }
-      if (str[i] === "[") {
-        if (startIndex !== -1) bracketCount++;
-      } else if (str[i] === "]") {
-        if (startIndex !== -1) bracketCount--;
-        if (bracketCount === 0 && startIndex !== -1) {
-          matches.push(str.slice(startIndex, i + 1));
-          startIndex = -1;
-        }
+
+        nested = nested.slice(0, -1); // Remove the last closing bracket
+        innerArray.push(parseCwrapArray(nested)); // Recursively parse
+        // console.log(`Nested array found: ${nested}`);
+
+        // Split on delimiters (comma or cwrapBreak)
+        const arrayContent = nested
+          .trim()
+          .split(/cwrapBreak|,/)
+          .map((item) => item.trim());
+        result.push(arrayContent);
+        // console.log(result);
+      } else {
+        i++;
       }
     }
 
-    return matches;
+    return result.length === 1 ? result[0] : result; // Return flattened array if needed
   };
 
-  const arrayMatches = findCwrapArrayMatches(jsonString, "cwrapArray");
-  if (!arrayMatches.length) {
-    return jsonObj;
-  }
+  // Replace cwrapArray placeholders with the selected index
+  const replaceCwrapArrays = (str, index) => {
+    return str.replace(/cwrapArray\[[^\]]*\]/g, (match) => {
+      const parsedArray = parseCwrapArray(match);
+      console.log(parsedArray);
+      return Array.isArray(parsedArray) && parsedArray[index] !== undefined
+        ? parsedArray[index]
+        : "";
+    });
+  };
 
-  // Process each `cwrapArray` placeholder
-  let replacedString = jsonString;
-  for (const match of arrayMatches) {
-    const arrayContent = match.match(/\[(.*)\]/s)[1]; // Extract everything inside the outermost brackets
-
-    // Determine the delimiter
-    const delimiter = arrayContent.includes("cwrapBreak") ? "cwrapBreak" : ",";
-
-    const array = arrayContent
-      .split(delimiter)
-      .map((item) => item.trim().replace(/['"]/g, ""));
-
-    replacedString = replacedString.replace(
-      match,
-      array[index] !== undefined ? array[index] : ""
-    );
-  }
-
-  try {
-    return JSON.parse(replacedString);
-  } catch (error) {
-    console.log(error);
-    return replacedString;
-  }
+  const replacedString = replaceCwrapArrays(jsonString, index);
+  return JSON.parse(replacedString);
 }
 /**
  * Creates cssMap and mediaQueriesMap.
