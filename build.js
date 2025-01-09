@@ -54,7 +54,10 @@ function clearDocumentByOmit(htmlString) {
 
   // Iterate in reverse order and remove elements containing "cwrapOmit"
   for (let i = elements.length - 1; i >= 0; i--) {
-    if (elements[i].textContent.includes("cwrapOmit")) {
+    if (
+      elements[i].textContent.includes("cwrapOmit") ||
+      elements[i].hasAttribute("data-cwrap-omit")
+    ) {
       elements[i].parentNode.removeChild(elements[i]);
     }
   }
@@ -102,6 +105,7 @@ function createElementFromJson(
   if (omit.includes(jsonObjCopy["omit-id"])) {
     jsonObjCopy.text = "cwrapOmit";
   }
+
   let isFragment = false;
   if (jsonObjCopy.element === "cwrap-fragment") isFragment = true;
   if (isFragment) {
@@ -122,6 +126,7 @@ function createElementFromJson(
   // Create the element
   const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
   let element;
+
   if (
     jsonObjCopy.element === "svg" ||
     jsonObjCopy.element === "path" ||
@@ -159,6 +164,7 @@ function createElementFromJson(
 
   if (!abandonItem) {
     const originalText = selectedJsonObj.text || jsonObjCopy.text;
+
     element.cwrapText = originalText ?? "";
 
     if (
@@ -261,7 +267,12 @@ function createElementFromJson(
     } else {
       element.textContent = originalText;
     }
-
+    //This is newest addition to workaround JSDOM preventing from non semantic text inside img (for example)
+    if (jsonObjCopy?.text?.includes("cwrapOmit")) {
+      console.log("omit occur");
+      console.log(jsonObjCopy);
+      element?.setAttribute("data-cwrap-omit", "");
+    }
     if (selectedJsonObj.attributes) {
       for (const [key, value] of Object.entries(selectedJsonObj.attributes)) {
         if (value === "cwrapOmit") break;
@@ -289,10 +300,6 @@ function createElementFromJson(
         }
       }
     }
-  }
-
-  if (isInitialLoad && !jsonObjCopy.blueprint) {
-    element.customTag = "cwrapPreloaded";
   }
 
   if (jsonObjCopy.blueprint) {
